@@ -1,0 +1,17 @@
+{% load kirana %}
+{% if bars %}
+  <div class="flex items-end gap-2 sm:gap-3" style="height: 11rem;">
+    {% for bar in bars %}
+      <div class="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
+        <span class="num text-xs font-medium text-ink-800">{% money bar.value 0 %}</span>
+        <div class="w-full rounded-t-md bg-ink-500/85" style="height: {{ bar.percent|floatformat:1 }}%"
+             role="img" aria-label="{{ bar.label|linebreaksbr|striptags }}: {% money bar.value 0 %}"></div>
+        <span class="text-center text-[11px] leading-tight text-slate-500">
+          {{ bar.label|linebreaksbr }}
+        </span>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="py-8 text-center text-sm text-slate-500">No purchases recorded yet.</p>
+{% endif %}

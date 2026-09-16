@@ -1,0 +1,102 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+  <div class="min-w-0">
+    <h1 class="text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">Products</h1>
+    <p class="mt-1 max-w-2xl text-sm text-slate-600">
+      Everything you buy from wholesalers, with its latest rate movement.
+    </p>
+  </div>
+  <div class="no-print flex flex-wrap gap-2">
+    <a href="{% url 'product_create' %}" class="btn btn-primary">Add product</a>
+    {% if total %}
+      <a href="{% url 'export' 'products' 'csv' %}" class="btn btn-secondary">Export CSV</a>
+    {% endif %}
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-header">
+    <h2 class="card-title">{{ filtered|plural:"product" }}{% if is_filtered %} of {{ total }}{% endif %}</h2>
+
+    <form method="get" data-autosubmit class="no-print flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+      <div class="sm:w-64">{{ filter_form.q }}</div>
+      <div class="sm:w-52">{{ filter_form.category }}</div>
+      <noscript><button type="submit" class="btn btn-secondary btn-sm">Filter</button></noscript>
+    </form>
+  </div>
+
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Product</th>
+            <th scope="col">Category</th>
+            <th scope="col">Pack</th>
+            <th scope="col" class="right">Latest rate</th>
+            <th scope="col" class="right">Last change</th>
+            <th scope="col" class="no-print right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>
+                <a href="{% url 'rate_history' %}?product={{ row.product.pk }}"
+                   class="font-medium text-ink-950 hover:underline">{{ row.product.name }}</a>
+                {% if row.product.brand %}
+                  <span class="block text-xs text-slate-500">{{ row.product.brand }}</span>
+                {% endif %}
+              </td>
+              <td class="text-slate-700">{{ row.product.category }}</td>
+              <td class="text-slate-600">
+                {{ row.product.pack_size|dash }}
+                <span class="block text-xs text-slate-400">per {{ row.product.unit }}</span>
+              </td>
+              <td class="num right whitespace-nowrap font-semibold">
+                {% if row.change %}
+                  {% money row.change.rate.purchase_rate %}
+                  <span class="block text-xs font-normal text-slate-400">
+                    {% shop_date row.change.rate.date %}
+                  </span>
+                {% else %}
+                  <span class="text-slate-400">—</span>
+                {% endif %}
+              </td>
+              <td class="right whitespace-nowrap">
+                {% if row.change.has_history %}
+                  {% if row.change.difference == 0 %}
+                    {% trend_badge row.change.trend "No change" %}
+                  {% else %}
+                    {% trend_badge row.change.trend row.change.percentage_change|percent %}
+                  {% endif %}
+                {% elif row.change %}
+                  <span class="text-xs text-slate-400">First rate</span>
+                {% else %}
+                  <a href="{% url 'add_rate' %}?product={{ row.product.pk }}"
+                     class="text-xs font-medium text-ink-700 underline">Add a rate</a>
+                {% endif %}
+              </td>
+              <td class="no-print right whitespace-nowrap">
+                <a href="{% url 'product_edit' row.product.pk %}?next={{ request.get_full_path|urlencode }}"
+                   class="btn btn-ghost btn-sm">Edit</a>
+                <a href="{% url 'product_delete' row.product.pk %}?next={{ request.get_full_path|urlencode }}"
+                   class="btn btn-ghost btn-sm text-rose-700">Delete</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% elif is_filtered %}
+    {% include "manager/partials/_empty_state.html" with title="Nothing matches those filters" message="Clear the search box or pick a different category." action_url="/products/" action_label="Clear filters" %}
+  {% else %}
+    {% include "manager/partials/_empty_state.html" with title="No products yet" message="Add the items you buy, one by one. Type any category and unit you like — nothing is preset." action_url="/products/new/" action_label="Add product" %}
+  {% endif %}
+</section>
+
+{% endblock %}

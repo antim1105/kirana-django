@@ -1,0 +1,138 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+
+  <div class="mb-5">
+    <h1 class="text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">
+      {% if duplicate %}A rate for that day already exists{% else %}Review this rate{% endif %}
+    </h1>
+    <p class="mt-1 text-sm text-slate-600">
+      {% if duplicate %}
+        Choose what to do with it. Nothing has been saved yet.
+      {% else %}
+        Check the figures, then save. Nothing has been saved yet.
+      {% endif %}
+    </p>
+  </div>
+
+  {# The duplicate warning, with the same three choices as the original app. #}
+  {% if duplicate %}
+    <div class="card mb-5 border-haldi-300 bg-haldi-50">
+      <div class="card-body">
+        <p class="text-sm text-haldi-900">
+          {{ values.wholesaler.company_name }} already has a rate recorded for
+          {{ values.product.name }} on {% shop_date values.date %}:
+        </p>
+        <p class="num mt-2 text-lg font-semibold text-haldi-900">
+          {% money duplicate.purchase_rate %} per {{ duplicate.unit }}
+          <span class="text-sm font-normal text-haldi-700">
+            → you are entering {% money values.purchase_rate %}
+          </span>
+        </p>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">{{ values.product.name }}</h2>
+      <span class="num text-sm text-slate-500">{% shop_date values.date %}</span>
+    </div>
+
+    <div class="card-body space-y-4">
+      <dl class="space-y-2 text-sm">
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-slate-500">Wholesaler</dt>
+          <dd class="font-medium text-ink-950">{{ values.wholesaler.company_name }}</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-slate-500">Rate quoted</dt>
+          <dd class="num font-semibold text-ink-950">
+            {% money values.purchase_rate %} per {{ values.product.unit }}
+          </dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-slate-500">Quantity</dt>
+          <dd class="num text-ink-900">{{ values.quantity|quantity:values.product.unit }}</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-slate-500">Transport and other</dt>
+          <dd class="num text-ink-900">{% money preview.extra_cost %}</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3 border-t border-slate-200 pt-2">
+          <dt class="font-medium text-ink-900">Effective rate</dt>
+          <dd class="num text-base font-semibold text-ink-950">
+            {% money preview.effective_rate %} per {{ values.product.unit }}
+          </dd>
+        </div>
+      </dl>
+
+      {# What this quote means against what came before. #}
+      <div class="rounded-lg border {{ preview.trend|trend_class:'border' }} {{ preview.trend|trend_class:'bg' }} px-4 py-3">
+        {% if preview.previous %}
+          <p class="text-xs font-medium text-slate-600">{{ preview.previous_source }}</p>
+          <p class="num mt-1 text-sm text-ink-900">
+            Was {% money preview.previous.purchase_rate %} on {% shop_date preview.previous.date %}
+          </p>
+          <p class="num mt-1 text-sm font-semibold {{ preview.trend|trend_class:'text' }}">
+            {{ preview.trend|trend_arrow }} {{ preview.trend|trend_text }}:
+            {% signed_money preview.difference %} ({{ preview.percentage_change|percent }})
+          </p>
+        {% else %}
+          <p class="text-sm text-slate-600">
+            This is the first rate recorded for {{ values.product.name }}. There is
+            nothing to compare it against yet.
+          </p>
+        {% endif %}
+      </div>
+
+      {% if preview.cheapest %}
+        <p class="text-xs text-slate-600">
+          Lowest current price for {{ values.product.name }}:
+          <span class="num font-semibold text-emerald-800">
+            {% money preview.cheapest.rate.purchase_rate %}
+          </span>
+          from {{ preview.cheapest.wholesaler.company_name }}
+          ({% shop_date preview.cheapest.rate.date %}).
+        </p>
+      {% endif %}
+
+      {% if values.notes %}
+        <p class="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">{{ values.notes }}</p>
+      {% endif %}
+    </div>
+
+    {# Every button re-posts the same values; only the action differs. #}
+    <div class="border-t border-slate-200 px-5 py-4">
+      <form method="post"
+            action="{% if instance %}{% url 'rate_edit' instance.pk %}{% else %}{% url 'add_rate' %}{% endif %}"
+            class="flex flex-wrap items-center justify-end gap-2">
+        {% csrf_token %}
+        {% for field in hidden_fields %}
+          <input type="hidden" name="{{ field.name }}" value="{{ field.value }}">
+        {% endfor %}
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <a href="{% if instance %}{% url 'rate_edit' instance.pk %}{% else %}{% url 'add_rate' %}{% endif %}"
+           class="btn btn-secondary">Go back and edit</a>
+
+        {% if duplicate %}
+          <input type="hidden" name="replace_id" value="{{ duplicate.pk }}">
+          <button type="submit" name="action" value="save" class="btn btn-secondary">
+            Create a second entry
+          </button>
+          <button type="submit" name="action" value="replace" class="btn btn-primary">
+            Update the existing one
+          </button>
+        {% else %}
+          <button type="submit" name="action" value="save" class="btn btn-primary">
+            {% if instance %}Save changes{% else %}Save this rate{% endif %}
+          </button>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

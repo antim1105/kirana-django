@@ -1,0 +1,18 @@
+# Core
+Django>=5.1,<6.2
+
+# Excel export. Without it, the Excel buttons fall back to CSV.
+openpyxl>=3.1
+
+# Serving static files in production (optional locally).
+whitenoise>=6.6
+
+# --- Database drivers: install only the one you use ---
+# PostgreSQL
+# psycopg[binary]>=3.1
+# MySQL / MariaDB
+# mysqlclient>=2.2
+
+# --- Production server (pick one) ---
+# gunicorn>=21.2
+# waitress>=3.0   # Windows

@@ -1,0 +1,56 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+
+  <div class="mb-5">
+    <a href="{{ cancel_url }}" class="text-sm text-slate-500 hover:text-ink-900">← Back</a>
+    <h1 class="mt-2 text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">{{ page_title }}</h1>
+    <p class="mt-1 text-sm text-slate-600">
+      {% if product %}
+        Changes apply to every rate already recorded{% if rate_count %} — {{ rate_count|plural:"rate" }} so far{% endif %}.
+      {% else %}
+        Rates are recorded per unit, so the unit matters most.
+      {% endif %}
+    </p>
+  </div>
+
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <div class="card-body space-y-4">
+      {% include "manager/partials/_form_errors.html" %}
+
+      {% include "manager/partials/_field.html" with field=form.name %}
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% include "manager/partials/_field.html" with field=form.category %}
+        {% include "manager/partials/_field.html" with field=form.brand %}
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% include "manager/partials/_field.html" with field=form.unit %}
+        {% include "manager/partials/_field.html" with field=form.pack_size %}
+      </div>
+
+      {% include "manager/partials/_field.html" with field=form.minimum_stock %}
+      {% include "manager/partials/_field.html" with field=form.notes %}
+    </div>
+
+    <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 px-5 py-4">
+      <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {% if product %}Save changes{% else %}Add product{% endif %}
+      </button>
+    </div>
+  </form>
+
+  <p class="mt-4 text-xs text-slate-500">
+    Category and unit are open text fields. Type whatever you use — "Dry fruits",
+    "Pooja items", "quintal", "peti", "bori". Anything you have used before is
+    suggested as you type, and a new category is saved for next time.
+  </p>
+</div>
+{% endblock %}

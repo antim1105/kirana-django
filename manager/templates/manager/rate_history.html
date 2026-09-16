@@ -1,0 +1,207 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+  <div class="min-w-0">
+    <h1 class="text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">Rate history</h1>
+    <p class="mt-1 max-w-2xl text-sm text-slate-600">
+      Every rate ever recorded, newest first. Each row is compared with the one below it.
+    </p>
+  </div>
+  <div class="no-print flex flex-wrap gap-2">
+    {% if product %}
+      <a href="{% url 'add_rate' %}?product={{ product.pk }}" class="btn btn-primary">Add rate</a>
+      <a href="{% url 'compare' %}?mode=wholesalers&product={{ product.pk }}" class="btn btn-secondary">
+        Compare suppliers
+      </a>
+    {% endif %}
+    <a href="{% url 'export' 'rates' 'csv' %}" class="btn btn-secondary">Export CSV</a>
+  </div>
+</div>
+
+{% if not has_products %}
+  <div class="card">
+    {% include "manager/partials/_empty_state.html" with title="No products yet" message="Add a product and record a rate for it, and its history will appear here." action_url="/products/new/" action_label="Add product" %}
+  </div>
+
+{% else %}
+
+  <form method="get" data-autosubmit class="card no-print mb-6">
+    <div class="card-body grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {% include "manager/partials/_field.html" with field=filter_form.product %}
+      {% include "manager/partials/_field.html" with field=filter_form.wholesaler %}
+      {% include "manager/partials/_field.html" with field=filter_form.movement %}
+      {% include "manager/partials/_field.html" with field=filter_form.date_from %}
+      {% include "manager/partials/_field.html" with field=filter_form.date_to %}
+    </div>
+    <div class="flex items-center justify-between gap-2 border-t border-slate-200 px-5 py-3">
+      <p class="text-xs text-slate-500">
+        {% if is_filtered %}Filters are on.{% else %}Pick a product to see its history.{% endif %}
+      </p>
+      <span class="flex gap-2">
+        {% if is_filtered and product %}
+          <a href="?product={{ product.pk }}" class="btn btn-ghost btn-sm">Clear filters</a>
+        {% endif %}
+        <button type="submit" class="btn btn-secondary btn-sm">Apply</button>
+      </span>
+    </div>
+  </form>
+
+  {% if product %}
+
+    {# ------------------------------------------------------------ Summary #}
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div class="card p-4">
+        <p class="text-xs font-medium text-slate-500">Entries</p>
+        <p class="stat-value mt-1 text-ink-950">{{ summary.count }}</p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs font-medium text-slate-500">Lowest</p>
+        <p class="stat-value mt-1 text-emerald-700">
+          {% if summary.lowest %}{% money summary.lowest %}{% else %}—{% endif %}
+        </p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs font-medium text-slate-500">Highest</p>
+        <p class="stat-value mt-1 text-rose-700">
+          {% if summary.highest %}{% money summary.highest %}{% else %}—{% endif %}
+        </p>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs font-medium text-slate-500">Average</p>
+        <p class="stat-value mt-1 text-ink-950">
+          {% if summary.average %}{% money summary.average %}{% else %}—{% endif %}
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-3">
+
+      {# -------------------------------------------------------------- Chart #}
+      <section class="card lg:col-span-2">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">{{ product.name }}
+              {% if product.brand %}<span class="font-normal text-slate-500">· {{ product.brand }}</span>{% endif %}
+            </h2>
+            <p class="card-description">Rate per {{ product.unit }} over time.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          {% include "manager/partials/_price_chart.html" with chart=chart product=product %}
+        </div>
+      </section>
+
+      {# ------------------------------------------------ Who is cheapest now #}
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Who is cheapest</h2>
+            <p class="card-description">Newest quote from each wholesaler.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          {% if quotes %}
+            <ul class="space-y-2.5">
+              {% for quote in quotes %}
+                <li class="flex items-baseline justify-between gap-2 text-sm">
+                  <span class="min-w-0 truncate">
+                    {{ quote.wholesaler.company_name|default:"Removed" }}
+                    {% if quote.is_cheapest %}
+                      <span class="ml-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800">
+                        Cheapest
+                      </span>
+                    {% endif %}
+                    <span class="block text-xs text-slate-400">{{ quote.rate.date|relative_date }}</span>
+                  </span>
+                  <span class="num shrink-0 font-semibold text-ink-950">
+                    {% money quote.rate.purchase_rate %}
+                  </span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="py-6 text-center text-sm text-slate-500">No quotes recorded yet.</p>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    {# --------------------------------------------------------------- Table #}
+    <section class="card mt-6">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">{{ summary.count|plural:"entry" }}</h2>
+          <p class="card-description">
+            {{ summary.increases }} went up, {{ summary.decreases }} came down.
+          </p>
+        </div>
+        <button type="button" onclick="window.print()" class="btn btn-secondary btn-sm no-print">Print</button>
+      </div>
+
+      {% if changes %}
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Wholesaler</th>
+                <th scope="col" class="right">Rate</th>
+                <th scope="col" class="right">Effective</th>
+                <th scope="col" class="right">Change</th>
+                <th scope="col">Notes</th>
+                <th scope="col" class="no-print right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for change in changes %}
+                <tr>
+                  <td class="num whitespace-nowrap text-slate-700">
+                    {% shop_date change.rate.date %}
+                    <span class="block text-xs text-slate-400">{{ change.rate.date|relative_date }}</span>
+                  </td>
+                  <td class="text-ink-900">{{ change.wholesaler.company_name|default:"—" }}</td>
+                  <td class="num right font-semibold">{% money change.rate.purchase_rate %}</td>
+                  <td class="num right text-slate-600">
+                    {% money change.rate.effective_rate %}
+                    {% if change.rate.extra_cost %}
+                      <span class="block text-xs text-slate-400">
+                        +{% money change.rate.extra_cost 0 %} on {{ change.rate.quantity|quantity:change.rate.unit }}
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td class="right whitespace-nowrap">
+                    {% if change.has_history %}
+                      <span class="num text-sm font-medium {{ change.trend|trend_class:'text' }}">
+                        {{ change.trend|trend_arrow }} {% signed_money change.difference %}
+                      </span>
+                      <span class="num block text-xs {{ change.trend|trend_class:'text' }}">
+                        {{ change.percentage_change|percent }}
+                      </span>
+                    {% else %}
+                      <span class="text-xs text-slate-400">First entry</span>
+                    {% endif %}
+                  </td>
+                  <td class="max-w-xs text-xs text-slate-500">{{ change.rate.notes|truncatechars:60|dash }}</td>
+                  <td class="no-print right whitespace-nowrap">
+                    <a href="{% url 'rate_edit' change.rate.pk %}" class="btn btn-ghost btn-sm">Edit</a>
+                    <a href="{% url 'rate_delete' change.rate.pk %}?next={{ request.get_full_path|urlencode }}"
+                       class="btn btn-ghost btn-sm text-rose-700">Delete</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% elif is_filtered %}
+        {% include "manager/partials/_empty_state.html" with title="No entries match those filters" message="Widen the date range, or set the movement back to any." %}
+      {% else %}
+        {% include "manager/partials/_empty_state.html" with title="No rates for this product yet" message="Record what a wholesaler quoted and the history starts building from there." action_url="/add-rate/" action_label="Add a rate" %}
+      {% endif %}
+    </section>
+
+  {% endif %}
+{% endif %}
+{% endblock %}

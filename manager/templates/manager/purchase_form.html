@@ -1,0 +1,71 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+
+  <div class="mb-5">
+    <a href="{{ cancel_url }}" class="text-sm text-slate-500 hover:text-ink-900">← Back to purchases</a>
+    <h1 class="mt-2 text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">{{ page_title }}</h1>
+    <p class="mt-1 text-sm text-slate-600">
+      Enter quantity and rate; the goods value and the final amount are calculated on save.
+    </p>
+  </div>
+
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <div class="card-body space-y-4">
+      {% include "manager/partials/_form_errors.html" %}
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% include "manager/partials/_field.html" with field=form.product %}
+        {% include "manager/partials/_field.html" with field=form.wholesaler %}
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-3">
+        {% include "manager/partials/_field.html" with field=form.date %}
+        {% include "manager/partials/_field.html" with field=form.quantity %}
+        {% include "manager/partials/_field.html" with field=form.rate %}
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% include "manager/partials/_field.html" with field=form.transport_cost %}
+        {% include "manager/partials/_field.html" with field=form.other_cost %}
+      </div>
+
+      <div class="rounded-lg bg-slate-50 px-4 py-3 text-xs text-slate-600">
+        <span class="num block text-ink-900">goods = quantity × rate</span>
+        <span class="num mt-0.5 block text-ink-900">paid = goods + transport + other</span>
+      </div>
+
+      {% include "manager/partials/_field.html" with field=form.notes %}
+    </div>
+
+    <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 px-5 py-4">
+      <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {% if instance %}Save changes{% else %}Record purchase{% endif %}
+      </button>
+    </div>
+  </form>
+
+  {% if instance %}
+    <dl class="mt-4 space-y-1 rounded-lg bg-white px-4 py-3 text-sm shadow-card">
+      <div class="flex justify-between gap-3">
+        <dt class="text-slate-500">Goods value</dt>
+        <dd class="num text-ink-900">{% money instance.total_amount %}</dd>
+      </div>
+      <div class="flex justify-between gap-3">
+        <dt class="text-slate-500">Total paid</dt>
+        <dd class="num font-semibold text-ink-950">{% money instance.final_amount %}</dd>
+      </div>
+      <div class="flex justify-between gap-3">
+        <dt class="text-slate-500">Effective rate</dt>
+        <dd class="num text-ink-900">{% money instance.effective_rate %} per {{ instance.product.unit }}</dd>
+      </div>
+    </dl>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% load kirana %}
+{% if rows %}
+  <ul class="space-y-3">
+    {% for row in rows %}
+      <li>
+        <div class="flex items-baseline justify-between gap-3 text-sm">
+          <span class="min-w-0 truncate text-ink-900">
+            {{ row.label }}
+            {% if row.detail %}<span class="num ml-1.5 text-xs text-slate-500">{{ row.detail }}</span>{% endif %}
+          </span>
+          <span class="num shrink-0 font-semibold text-ink-950">{% money row.value 0 %}</span>
+        </div>
+        <div class="bar-track mt-1.5">
+          <div class="bar-fill" style="width: {{ row.percent|floatformat:1 }}%"></div>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="py-8 text-center text-sm text-slate-500">No purchases recorded yet.</p>
+{% endif %}

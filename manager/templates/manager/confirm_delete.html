@@ -1,0 +1,64 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+<div class="mx-auto max-w-lg">
+  <div class="card">
+    <div class="card-body">
+      <h1 class="text-lg font-semibold text-ink-950">{{ page_title }}</h1>
+      <p class="mt-2 text-sm text-slate-600">{{ warning }}</p>
+
+      {% if kind == 'rate' %}
+        <dl class="mt-4 space-y-1.5 rounded-lg bg-slate-50 px-4 py-3 text-sm">
+          <div class="flex justify-between gap-3">
+            <dt class="text-slate-500">Product</dt>
+            <dd class="font-medium text-ink-950">{{ object.product.name }}</dd>
+          </div>
+          <div class="flex justify-between gap-3">
+            <dt class="text-slate-500">Wholesaler</dt>
+            <dd class="text-ink-900">{{ object.wholesaler.company_name }}</dd>
+          </div>
+          <div class="flex justify-between gap-3">
+            <dt class="text-slate-500">Date</dt>
+            <dd class="num text-ink-900">{% shop_date object.date %}</dd>
+          </div>
+          <div class="flex justify-between gap-3">
+            <dt class="text-slate-500">Rate</dt>
+            <dd class="num font-semibold text-ink-950">{% money object.purchase_rate %} per {{ object.unit }}</dd>
+          </div>
+        </dl>
+      {% elif kind == 'purchase' %}
+        <dl class="mt-4 space-y-1.5 rounded-lg bg-slate-50 px-4 py-3 text-sm">
+          <div class="flex justify-between gap-3">
+            <dt class="text-slate-500">Product</dt>
+            <dd class="font-medium text-ink-950">{{ object.product.name }}</dd>
+          </div>
+          <div class="flex justify-between gap-3">
+            <dt class="text-slate-500">Date</dt>
+            <dd class="num text-ink-900">{% shop_date object.date %}</dd>
+          </div>
+          <div class="flex justify-between gap-3">
+            <dt class="text-slate-500">Amount</dt>
+            <dd class="num font-semibold text-ink-950">{% money object.final_amount %}</dd>
+          </div>
+        </dl>
+      {% endif %}
+
+      {% if counts %}
+        <ul class="mt-4 space-y-1 text-sm text-slate-600">
+          {% for label, count in counts %}
+            <li class="num">{{ count }} {{ label }} will be deleted</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <form method="post" class="mt-6 flex flex-wrap items-center justify-end gap-2">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+        <a href="{{ cancel_url }}" class="btn btn-secondary">Keep it</a>
+        <button type="submit" class="btn btn-danger">Delete {{ kind }}</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

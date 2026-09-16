@@ -1,0 +1,61 @@
+{% load kirana %}
+{# Hand-built SVG, so it needs no library and prints as-is. #}
+{% if chart.has_data %}
+  <figure class="mt-1">
+    <svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" class="h-56 w-full"
+         role="img" preserveAspectRatio="xMidYMid meet"
+         aria-label="Rate over time for {{ product.name|default:'this product' }}">
+      {% for line in chart.grid_lines %}
+        <line x1="{{ line.x1 }}" y1="{{ line.y|floatformat:1 }}"
+              x2="{{ line.x2 }}" y2="{{ line.y|floatformat:1 }}"
+              stroke="#e2e8f0" stroke-width="1" />
+        <text x="{{ chart.padding_left|add:'-8' }}" y="{{ line.y|floatformat:1 }}"
+              text-anchor="end" dominant-baseline="middle"
+              font-size="10" fill="#94a3b8" font-family="IBM Plex Mono, monospace">
+          {{ line.value|number:0 }}
+        </text>
+      {% endfor %}
+
+      {% if chart.area_path %}
+        <path d="{{ chart.area_path }}" fill="rgba(66, 92, 153, 0.10)" />
+      {% endif %}
+
+      {% if chart.effective_polyline %}
+        <polyline points="{{ chart.effective_polyline }}" fill="none"
+                  stroke="#f9830c" stroke-width="1.5" stroke-dasharray="4 3"
+                  stroke-linejoin="round" />
+      {% endif %}
+
+      <polyline points="{{ chart.polyline }}" fill="none" stroke="#425c99"
+                stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+
+      {% for point in chart.points %}
+        <circle cx="{{ point.x|floatformat:1 }}" cy="{{ point.y|floatformat:1 }}" r="3.5"
+                fill="#fff" stroke="#425c99" stroke-width="2">
+          <title>{{ point.label }}: {{ point.value|number }} ({{ point.hint }})</title>
+        </circle>
+      {% endfor %}
+
+      {% for label in chart.x_labels %}
+        <text x="{{ label.x|floatformat:1 }}" y="{{ label.y }}" text-anchor="middle"
+              font-size="10" fill="#94a3b8" font-family="Inter Tight, sans-serif">
+          {{ label.label }}
+        </text>
+      {% endfor %}
+    </svg>
+    <figcaption class="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-0.5 w-5 bg-ink-500" aria-hidden="true"></span>
+        Quoted rate
+      </span>
+      <span class="inline-flex items-center gap-1.5">
+        <span class="inline-block h-0.5 w-5 border-t-2 border-dashed border-haldi-500" aria-hidden="true"></span>
+        Effective rate, with transport
+      </span>
+    </figcaption>
+  </figure>
+{% else %}
+  <p class="py-10 text-center text-sm text-slate-500">
+    No rates recorded for this product yet.
+  </p>
+{% endif %}

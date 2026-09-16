@@ -1,0 +1,33 @@
+{% extends "manager/base.html" %}
+
+{% block content %}
+<div class="mx-auto max-w-sm">
+  <div class="card">
+    <div class="card-body">
+      <h1 class="text-lg font-semibold text-ink-950">Sign in</h1>
+      <p class="mt-1 text-sm text-slate-600">Your rates are private to this shop.</p>
+
+      <form method="post" class="mt-5 space-y-4">
+        {% csrf_token %}
+        {% if form.errors %}
+          <p class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+            That username and password don't match. Try again.
+          </p>
+        {% endif %}
+        <div>
+          <label class="field-label" for="{{ form.username.id_for_label }}">Username</label>
+          <input type="text" name="username" id="{{ form.username.id_for_label }}"
+                 class="field-control" autocomplete="username" autofocus required>
+        </div>
+        <div>
+          <label class="field-label" for="{{ form.password.id_for_label }}">Password</label>
+          <input type="password" name="password" id="{{ form.password.id_for_label }}"
+                 class="field-control" autocomplete="current-password" required>
+        </div>
+        <input type="hidden" name="next" value="{{ next }}">
+        <button type="submit" class="btn btn-primary w-full">Sign in</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

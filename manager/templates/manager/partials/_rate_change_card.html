@@ -1,0 +1,33 @@
+{% load kirana %}
+{# One product's latest rate and how it moved. Used on the dashboard. #}
+<div class="rounded-xl border {{ change.trend|trend_class:'border' }} {{ change.trend|trend_class:'bg' }} p-3.5">
+  <div class="flex items-start justify-between gap-2">
+    <div class="min-w-0">
+      <a href="{% url 'rate_history' %}?product={{ change.rate.product_id }}"
+         class="block truncate text-sm font-semibold text-ink-950 hover:underline">
+        {{ change.product.name }}
+      </a>
+      <p class="truncate text-xs text-slate-600">
+        {{ change.wholesaler.company_name }} · {% shop_date change.rate.date %}
+      </p>
+    </div>
+    <span class="num shrink-0 text-right text-sm font-semibold text-ink-950">
+      {% money change.rate.purchase_rate %}
+      <span class="block text-xs font-normal text-slate-500">per {{ change.rate.unit }}</span>
+    </span>
+  </div>
+
+  <div class="mt-2.5 flex items-center justify-between gap-2 border-t {{ change.trend|trend_class:'border' }} pt-2">
+    {% if change.has_history %}
+      <span class="num text-xs font-semibold {{ change.trend|trend_class:'text' }}">
+        {{ change.trend|trend_arrow }} {% signed_money change.difference %}
+        ({{ change.percentage_change|percent }})
+      </span>
+      <span class="num text-xs text-slate-500">
+        was {% money change.previous_rate.purchase_rate %}
+      </span>
+    {% else %}
+      <span class="text-xs text-slate-500">First rate recorded — nothing to compare yet.</span>
+    {% endif %}
+  </div>
+</div>

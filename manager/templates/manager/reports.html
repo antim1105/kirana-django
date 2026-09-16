@@ -1,0 +1,325 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+  <div class="min-w-0">
+    <h1 class="text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">Reports</h1>
+    <p class="mt-1 max-w-2xl text-sm text-slate-600">
+      What changed, what you spent, and a backup of everything.
+    </p>
+  </div>
+  <div class="no-print flex flex-wrap gap-2">
+    <button type="button" onclick="window.print()" class="btn btn-secondary">Print this page</button>
+  </div>
+</div>
+
+{% if not has_data %}
+  <div class="card">
+    {% include "manager/partials/_empty_state.html" with title="No data to report on yet" message="Record a few rates and purchases, and the monthly and rate-change reports build themselves." action_url="/add-rate/" action_label="Add a rate" %}
+  </div>
+
+{% else %}
+
+  {# ------------------------------------------------- Rate change report #}
+  <section class="card">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Rate change report</h2>
+        <p class="card-description">Latest rate against the previous one, for every product.</p>
+      </div>
+      <a href="{% url 'export' 'rates' 'xlsx' %}" class="btn btn-secondary btn-sm no-print">Export Excel</a>
+    </div>
+
+    <div class="card-body grid gap-5 lg:grid-cols-3">
+      <div>
+        <h3 class="mb-2 flex items-baseline justify-between text-sm font-semibold text-rose-800">
+          Price increased <span class="num text-xs">{{ increased|length }}</span>
+        </h3>
+        {% if increased %}
+          <ul class="space-y-2">
+            {% for change in increased|slice:":8" %}
+              <li class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2">
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="min-w-0 truncate text-sm text-ink-950">{{ change.product.name }}</span>
+                  <span class="num shrink-0 text-sm font-semibold text-rose-700">
+                    {% signed_money change.difference %}
+                  </span>
+                </div>
+                <p class="num text-xs text-rose-700">
+                  {% money change.previous_rate.purchase_rate %} → {% money change.rate.purchase_rate %}
+                  ({{ change.percentage_change|percent }})
+                </p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="py-6 text-center text-sm text-slate-500">Nothing went up.</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <h3 class="mb-2 flex items-baseline justify-between text-sm font-semibold text-emerald-800">
+          Price decreased <span class="num text-xs">{{ decreased|length }}</span>
+        </h3>
+        {% if decreased %}
+          <ul class="space-y-2">
+            {% for change in decreased|slice:":8" %}
+              <li class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="min-w-0 truncate text-sm text-ink-950">{{ change.product.name }}</span>
+                  <span class="num shrink-0 text-sm font-semibold text-emerald-700">
+                    {% signed_money change.difference %}
+                  </span>
+                </div>
+                <p class="num text-xs text-emerald-700">
+                  {% money change.previous_rate.purchase_rate %} → {% money change.rate.purchase_rate %}
+                  ({{ change.percentage_change|percent }})
+                </p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="py-6 text-center text-sm text-slate-500">Nothing came down.</p>
+        {% endif %}
+      </div>
+
+      <div>
+        <h3 class="mb-2 flex items-baseline justify-between text-sm font-semibold text-slate-600">
+          No change <span class="num text-xs">{{ unchanged|length }}</span>
+        </h3>
+        {% if unchanged %}
+          <ul class="space-y-2">
+            {% for change in unchanged|slice:":8" %}
+              <li class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <div class="flex items-baseline justify-between gap-2">
+                  <span class="min-w-0 truncate text-sm text-ink-950">{{ change.product.name }}</span>
+                  <span class="num shrink-0 text-sm text-slate-600">
+                    {% money change.rate.purchase_rate %}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500">
+                  {% if change.has_history %}Held steady{% else %}First rate recorded{% endif %}
+                </p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="py-6 text-center text-sm text-slate-500">Everything moved.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  {# ----------------------------------------------------- Monthly report #}
+  {% if report %}
+    <section class="card mt-6">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Monthly report · {{ report.label }}</h2>
+          <p class="card-description">Purchases made and rates recorded in this month.</p>
+        </div>
+        <div class="no-print flex flex-wrap items-center gap-2">
+          <form method="get" data-autosubmit>
+            <label for="month-picker" class="sr-only">Month</label>
+            <select name="month" id="month-picker" class="field-control sm:w-44">
+              {% for key in months %}
+                <option value="{{ key }}"{% if key == month %} selected{% endif %}>
+                  {{ key|month_label }}
+                </option>
+              {% endfor %}
+            </select>
+            <noscript><button type="submit" class="btn btn-secondary btn-sm">Show</button></noscript>
+          </form>
+          <a href="{% url 'export' 'monthly' 'xlsx' %}?month={{ month }}" class="btn btn-secondary btn-sm">
+            Export
+          </a>
+        </div>
+      </div>
+
+      {% if report.has_data %}
+        <div class="card-body space-y-6">
+
+          <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-xs font-medium text-slate-500">Total spent</p>
+              <p class="stat-value mt-1 text-ink-950">{% money report.total_purchase_amount 0 %}</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-xs font-medium text-slate-500">Purchases</p>
+              <p class="stat-value mt-1 text-ink-950">{{ report.purchase_count }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-xs font-medium text-slate-500">Total quantity</p>
+              <p class="stat-value mt-1 text-ink-950">{{ report.total_quantity|number:0 }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p class="text-xs font-medium text-slate-500">Rate moves</p>
+              <p class="stat-value mt-1 text-ink-950">
+                <span class="text-rose-700">{{ report.increased|length }}</span>
+                <span class="text-slate-300">/</span>
+                <span class="text-emerald-700">{{ report.decreased|length }}</span>
+              </p>
+              <p class="mt-0.5 text-xs text-slate-400">up / down</p>
+            </div>
+          </div>
+
+          <div class="grid gap-6 lg:grid-cols-2">
+            <div>
+              <h3 class="mb-2 text-sm font-semibold text-ink-900">Most spent on</h3>
+              {% if report.top_products %}
+                <div class="table-wrap">
+                  <table class="data-table" style="min-width:0">
+                    <thead>
+                      <tr>
+                        <th scope="col">Product</th>
+                        <th scope="col" class="right">Quantity</th>
+                        <th scope="col" class="right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for row in report.top_products %}
+                        <tr>
+                          <td class="text-ink-950">{{ row.product.name|default:"Removed product" }}</td>
+                          <td class="num right">{{ row.quantity|quantity:row.product.unit }}</td>
+                          <td class="num right font-semibold">{% money row.amount 0 %}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% else %}
+                <p class="py-6 text-center text-sm text-slate-500">No purchases this month.</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <h3 class="mb-2 text-sm font-semibold text-ink-900">Most expensive rates</h3>
+              {% if report.most_expensive %}
+                <div class="table-wrap">
+                  <table class="data-table" style="min-width:0">
+                    <thead>
+                      <tr>
+                        <th scope="col">Product</th>
+                        <th scope="col" class="right">Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for row in report.most_expensive %}
+                        <tr>
+                          <td class="text-ink-950">{{ row.product.name|default:"Removed product" }}</td>
+                          <td class="num right font-semibold">
+                            {% money row.rate %}
+                            <span class="block text-xs font-normal text-slate-400">per {{ row.unit }}</span>
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% else %}
+                <p class="py-6 text-center text-sm text-slate-500">No rates recorded this month.</p>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if report.by_wholesaler %}
+            <div>
+              <h3 class="mb-2 text-sm font-semibold text-ink-900">Bought from</h3>
+              <ul class="divide-y divide-slate-100">
+                {% for row in report.by_wholesaler %}
+                  <li class="flex items-baseline justify-between gap-3 py-2.5 text-sm">
+                    <span class="min-w-0 truncate text-ink-900">
+                      {{ row.wholesaler.company_name|default:"Removed wholesaler" }}
+                      <span class="num ml-1.5 text-xs text-slate-500">
+                        {{ row.purchases|plural:"purchase" }}
+                      </span>
+                    </span>
+                    <span class="num shrink-0 font-semibold text-ink-950">{% money row.amount 0 %}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        </div>
+      {% else %}
+        {% include "manager/partials/_empty_state.html" with title="Nothing recorded in this month" message="Pick another month from the list, or record a rate or purchase dated in this one." %}
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {# ---------------------------------------------------------- Trends #}
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Purchase trend</h2>
+          <p class="card-description">Every month you have recorded.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        {% include "manager/partials/_trend_bars.html" with bars=bars %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Spend by wholesaler</h2>
+          <p class="card-description">All time.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        {% include "manager/partials/_share_rows.html" with rows=spend %}
+      </div>
+    </section>
+  </div>
+
+  {# ---------------------------------------------------------- Export #}
+  <section class="card no-print mt-6">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Export and backup</h2>
+        <p class="card-description">Keep a copy outside the server.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-xl border border-slate-200 p-4">
+          <p class="text-sm font-medium text-ink-950">Rates</p>
+          <p class="mt-1 text-xs text-slate-500">Every rate with its movement.</p>
+          <p class="mt-3 flex gap-2">
+            <a href="{% url 'export' 'rates' 'csv' %}" class="btn btn-secondary btn-sm">CSV</a>
+            <a href="{% url 'export' 'rates' 'xlsx' %}" class="btn btn-secondary btn-sm">Excel</a>
+          </p>
+        </div>
+        <div class="rounded-xl border border-slate-200 p-4">
+          <p class="text-sm font-medium text-ink-950">Purchases</p>
+          <p class="mt-1 text-xs text-slate-500">What you bought and paid.</p>
+          <p class="mt-3 flex gap-2">
+            <a href="{% url 'export' 'purchases' 'csv' %}" class="btn btn-secondary btn-sm">CSV</a>
+            <a href="{% url 'export' 'purchases' 'xlsx' %}" class="btn btn-secondary btn-sm">Excel</a>
+          </p>
+        </div>
+        <div class="rounded-xl border border-slate-200 p-4">
+          <p class="text-sm font-medium text-ink-950">Products and suppliers</p>
+          <p class="mt-1 text-xs text-slate-500">Your master lists.</p>
+          <p class="mt-3 flex gap-2">
+            <a href="{% url 'export' 'products' 'csv' %}" class="btn btn-secondary btn-sm">Products</a>
+            <a href="{% url 'export' 'wholesalers' 'csv' %}" class="btn btn-secondary btn-sm">Suppliers</a>
+          </p>
+        </div>
+        <div class="rounded-xl border border-haldi-200 bg-haldi-50 p-4">
+          <p class="text-sm font-medium text-haldi-900">Full backup</p>
+          <p class="mt-1 text-xs text-haldi-700">Everything as JSON, restorable from Settings.</p>
+          <p class="mt-3">
+            <a href="{% url 'export_backup' %}" class="btn btn-accent btn-sm">Download backup</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+{% endif %}
+{% endblock %}

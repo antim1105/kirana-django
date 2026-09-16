@@ -1,0 +1,83 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">
+    {% if query %}Results for "{{ query }}"{% else %}Search{% endif %}
+  </h1>
+  <p class="mt-1 text-sm text-slate-600">
+    {% if query %}{{ total|plural:"match" }} across products, wholesalers and rate notes.
+    {% else %}Type at least two letters in the box above.{% endif %}
+  </p>
+</div>
+
+{% if query and not total %}
+  <div class="card">
+    {% include "manager/partials/_empty_state.html" with title="Nothing matched" message="Try a shorter word, or part of a brand or company name." %}
+  </div>
+{% endif %}
+
+{% if results.products %}
+  <section class="card mb-6">
+    <div class="card-header"><h2 class="card-title">Products</h2></div>
+    <ul class="divide-y divide-slate-100">
+      {% for product in results.products %}
+        <li class="flex items-center justify-between gap-3 px-5 py-3">
+          <span class="min-w-0">
+            <a href="{% url 'rate_history' %}?product={{ product.pk }}"
+               class="block truncate font-medium text-ink-950 hover:underline">{{ product.name }}</a>
+            <span class="block truncate text-xs text-slate-500">
+              {{ product.category }}{% if product.brand %} · {{ product.brand }}{% endif %} · per {{ product.unit }}
+            </span>
+          </span>
+          <a href="{% url 'add_rate' %}?product={{ product.pk }}" class="btn btn-secondary btn-sm shrink-0">
+            Add rate
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+{% if results.wholesalers %}
+  <section class="card mb-6">
+    <div class="card-header"><h2 class="card-title">Wholesalers</h2></div>
+    <ul class="divide-y divide-slate-100">
+      {% for wholesaler in results.wholesalers %}
+        <li class="flex items-center justify-between gap-3 px-5 py-3">
+          <span class="min-w-0">
+            <span class="block truncate font-medium text-ink-950">{{ wholesaler.company_name }}</span>
+            <span class="block truncate text-xs text-slate-500">
+              {{ wholesaler.name|default:"" }}{% if wholesaler.mobile %} · {{ wholesaler.mobile }}{% endif %}
+            </span>
+          </span>
+          <a href="{% url 'wholesaler_edit' wholesaler.pk %}" class="btn btn-secondary btn-sm shrink-0">Open</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+{% if results.rates %}
+  <section class="card">
+    <div class="card-header"><h2 class="card-title">Rates</h2></div>
+    <ul class="divide-y divide-slate-100">
+      {% for rate in results.rates %}
+        <li class="flex items-center justify-between gap-3 px-5 py-3">
+          <span class="min-w-0">
+            <span class="block truncate font-medium text-ink-950">{{ rate.product.name }}</span>
+            <span class="block truncate text-xs text-slate-500">
+              {{ rate.wholesaler.company_name }} · {% shop_date rate.date %}
+              {% if rate.notes %} · {{ rate.notes|truncatechars:50 }}{% endif %}
+            </span>
+          </span>
+          <span class="num shrink-0 text-sm font-semibold">{% money rate.purchase_rate %}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+{% endblock %}

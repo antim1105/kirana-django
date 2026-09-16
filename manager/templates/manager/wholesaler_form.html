@@ -1,0 +1,39 @@
+{% extends "manager/base.html" %}
+
+{% block content %}
+<div class="mx-auto max-w-2xl">
+
+  <div class="mb-5">
+    <a href="{{ cancel_url }}" class="text-sm text-slate-500 hover:text-ink-900">← Back</a>
+    <h1 class="mt-2 text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">{{ page_title }}</h1>
+    <p class="mt-1 text-sm text-slate-600">
+      The company name is how this wholesaler appears on every rate and report.
+    </p>
+  </div>
+
+  <form method="post" class="card">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <div class="card-body space-y-4">
+      {% include "manager/partials/_form_errors.html" %}
+      {% include "manager/partials/_field.html" with field=form.company_name %}
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% include "manager/partials/_field.html" with field=form.name %}
+        {% include "manager/partials/_field.html" with field=form.mobile %}
+      </div>
+
+      {% include "manager/partials/_field.html" with field=form.address %}
+      {% include "manager/partials/_field.html" with field=form.notes %}
+    </div>
+
+    <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 px-5 py-4">
+      <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        {% if wholesaler %}Save changes{% else %}Add wholesaler{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

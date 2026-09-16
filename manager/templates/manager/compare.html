@@ -1,0 +1,160 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">Compare rates</h1>
+  <p class="mt-1 max-w-2xl text-sm text-slate-600">
+    Two questions, two tabs: how a price moved between two dates, and who is
+    quoting the best price right now.
+  </p>
+</div>
+
+{% if not has_products %}
+  <div class="card">
+    {% include "manager/partials/_empty_state.html" with title="Nothing to compare yet" message="Add a product and a few rates, and both comparisons open up." action_url="/products/new/" action_label="Add product" %}
+  </div>
+
+{% else %}
+
+  <div class="no-print mb-5 flex gap-2" role="tablist">
+    <a href="?mode=dates" class="chip{% if mode == 'dates' %} chip-active{% endif %}"
+       role="tab" aria-selected="{% if mode == 'dates' %}true{% else %}false{% endif %}">
+      Two dates
+    </a>
+    <a href="?mode=wholesalers" class="chip{% if mode == 'wholesalers' %} chip-active{% endif %}"
+       role="tab" aria-selected="{% if mode == 'wholesalers' %}true{% else %}false{% endif %}">
+      Wholesaler against wholesaler
+    </a>
+  </div>
+
+  {# =================================================== Date-to-date compare #}
+  {% if mode == 'dates' %}
+
+    <form method="get" class="card mb-6">
+      <input type="hidden" name="mode" value="dates">
+      <div class="card-body grid gap-4 sm:grid-cols-3">
+        {% include "manager/partials/_field.html" with field=date_form.product %}
+        {% include "manager/partials/_field.html" with field=date_form.date1 %}
+        {% include "manager/partials/_field.html" with field=date_form.date2 %}
+      </div>
+      <div class="flex items-center justify-between gap-2 border-t border-slate-200 px-5 py-3">
+        <p class="text-xs text-slate-500">
+          A date with no entry resolves to the last rate recorded before it.
+        </p>
+        <button type="submit" class="btn btn-primary btn-sm">Compare</button>
+      </div>
+    </form>
+
+    {% if comparison %}
+      {% if comparison.is_complete %}
+        <section class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">{{ comparison.product.name }}</h2>
+              <p class="card-description">
+                {% shop_date comparison.earlier_date %} against {% shop_date comparison.later_date %}
+              </p>
+            </div>
+            <a href="{% url 'rate_history' %}?product={{ comparison.product.pk }}"
+               class="btn btn-secondary btn-sm no-print">Full history</a>
+          </div>
+
+          <div class="card-body">
+            <div class="grid gap-4 sm:grid-cols-3">
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p class="text-xs font-medium text-slate-500">
+                  On {% shop_date comparison.earlier_date %}
+                </p>
+                <p class="num mt-1 text-xl font-semibold text-ink-950">
+                  {% money comparison.old_rate.purchase_rate %}
+                </p>
+                <p class="mt-1 text-xs text-slate-500">
+                  {{ comparison.old_rate.wholesaler.company_name }}<br>
+                  recorded {% shop_date comparison.old_rate.date %}
+                </p>
+              </div>
+
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p class="text-xs font-medium text-slate-500">
+                  On {% shop_date comparison.later_date %}
+                </p>
+                <p class="num mt-1 text-xl font-semibold text-ink-950">
+                  {% money comparison.new_rate.purchase_rate %}
+                </p>
+                <p class="mt-1 text-xs text-slate-500">
+                  {{ comparison.new_rate.wholesaler.company_name }}<br>
+                  recorded {% shop_date comparison.new_rate.date %}
+                </p>
+              </div>
+
+              <div class="rounded-xl border {{ comparison.trend|trend_class:'border' }} {{ comparison.trend|trend_class:'bg' }} p-4">
+                <p class="text-xs font-medium text-slate-600">{{ comparison.trend|trend_text }}</p>
+                <p class="num mt-1 text-xl font-semibold {{ comparison.trend|trend_class:'text' }}">
+                  {{ comparison.trend|trend_arrow }} {% signed_money comparison.difference %}
+                </p>
+                <p class="num mt-1 text-sm {{ comparison.trend|trend_class:'text' }}">
+                  {{ comparison.percentage_change|percent }}
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-5 border-t border-slate-200 pt-4">
+              {% include "manager/partials/_price_chart.html" with chart=chart product=comparison.product %}
+            </div>
+          </div>
+        </section>
+      {% else %}
+        <div class="card">
+          {% include "manager/partials/_empty_state.html" with title="Not enough history for those dates" message="There is no rate recorded on or before one of the dates you picked. Try an earlier start date, or record more rates." %}
+        </div>
+      {% endif %}
+    {% endif %}
+
+  {# ================================================== Wholesaler comparison #}
+  {% else %}
+
+    <form method="get" class="card mb-6">
+      <input type="hidden" name="mode" value="wholesalers">
+      <div class="card-body">
+        <div class="sm:max-w-sm">
+          {% include "manager/partials/_field.html" with field=wholesaler_form.product %}
+        </div>
+      </div>
+      <div class="flex items-center justify-between gap-2 border-t border-slate-200 px-5 py-3">
+        <p class="text-xs text-slate-500">Shows the newest quote from each wholesaler.</p>
+        <button type="submit" class="btn btn-primary btn-sm">Compare</button>
+      </div>
+    </form>
+
+    {% if selected_product %}
+      {% if quotes %}
+        <section class="card">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">{{ selected_product.name }}</h2>
+              <p class="card-description">
+                {{ quotes|length|plural:"wholesaler" }} quoting, cheapest first. Rates per {{ selected_product.unit }}.
+              </p>
+            </div>
+            <a href="{% url 'add_rate' %}?product={{ selected_product.pk }}"
+               class="btn btn-primary btn-sm no-print">Add a quote</a>
+          </div>
+
+          {% include "manager/partials/_quotes_table.html" with quotes=quotes %}
+
+          <div class="border-t border-slate-200 p-5">
+            {% include "manager/partials/_price_chart.html" with chart=chart product=selected_product %}
+          </div>
+        </section>
+      {% else %}
+        <div class="card">
+          {% include "manager/partials/_empty_state.html" with title="No quotes for that product" message="Record what a wholesaler quoted and this comparison fills in." action_url="/add-rate/" action_label="Add a rate" %}
+        </div>
+      {% endif %}
+    {% endif %}
+
+  {% endif %}
+{% endif %}
+{% endblock %}

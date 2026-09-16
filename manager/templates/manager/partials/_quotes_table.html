@@ -1,0 +1,45 @@
+{% load kirana %}
+{# Latest quote per wholesaler, cheapest first. #}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th scope="col">Wholesaler</th>
+        <th scope="col">Quoted on</th>
+        <th scope="col" class="right">Rate</th>
+        <th scope="col" class="right">Effective</th>
+        <th scope="col" class="right">Against cheapest</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for quote in quotes %}
+        <tr{% if quote.is_cheapest %} class="bg-emerald-50/60"{% endif %}>
+          <td>
+            <span class="font-medium text-ink-950">{{ quote.wholesaler.company_name|default:"Removed wholesaler" }}</span>
+            {% if quote.is_cheapest %}
+              <span class="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                Cheapest
+              </span>
+            {% endif %}
+            {% if quote.wholesaler.mobile %}
+              <span class="num block text-xs text-slate-500">{{ quote.wholesaler.mobile }}</span>
+            {% endif %}
+          </td>
+          <td class="whitespace-nowrap text-slate-600">
+            {% shop_date quote.rate.date %}
+            <span class="block text-xs text-slate-400">{{ quote.rate.date|relative_date }}</span>
+          </td>
+          <td class="num right font-semibold">{% money quote.rate.purchase_rate %}</td>
+          <td class="num right text-slate-600">{% money quote.rate.effective_rate %}</td>
+          <td class="num right">
+            {% if quote.is_cheapest %}
+              <span class="text-xs text-slate-400">—</span>
+            {% else %}
+              <span class="text-rose-700">{% signed_money quote.difference_from_cheapest %}</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,92 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+  <div class="min-w-0">
+    <h1 class="text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">Wholesalers</h1>
+    <p class="mt-1 max-w-2xl text-sm text-slate-600">
+      Who you buy from, how much you have spent with each, and how many rates they have quoted.
+    </p>
+  </div>
+  <div class="no-print flex flex-wrap gap-2">
+    <a href="{% url 'wholesaler_create' %}" class="btn btn-primary">Add wholesaler</a>
+    {% if total %}
+      <a href="{% url 'export' 'wholesalers' 'csv' %}" class="btn btn-secondary">Export CSV</a>
+    {% endif %}
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-header">
+    <h2 class="card-title">
+      {{ filtered|plural:"wholesaler" }}{% if query %} of {{ total }}{% endif %}
+    </h2>
+    <form method="get" data-autosubmit class="no-print w-full sm:w-72">
+      <label for="wholesaler-search" class="sr-only">Search wholesalers</label>
+      <input type="search" id="wholesaler-search" name="q" value="{{ query }}"
+             class="field-control" placeholder="Search name, company or mobile">
+      <noscript><button type="submit" class="btn btn-secondary btn-sm mt-2">Search</button></noscript>
+    </form>
+  </div>
+
+  {% if wholesalers %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Company</th>
+            <th scope="col">Contact</th>
+            <th scope="col">Notes</th>
+            <th scope="col" class="right">Rates</th>
+            <th scope="col" class="right">Total bought</th>
+            <th scope="col" class="no-print right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for wholesaler in wholesalers %}
+            <tr>
+              <td>
+                <span class="font-medium text-ink-950">{{ wholesaler.company_name }}</span>
+                {% if wholesaler.address %}
+                  <span class="block max-w-xs truncate text-xs text-slate-500">{{ wholesaler.address }}</span>
+                {% endif %}
+              </td>
+              <td class="whitespace-nowrap text-slate-700">
+                {{ wholesaler.name|dash }}
+                {% if wholesaler.mobile %}
+                  <a href="tel:{{ wholesaler.mobile }}" class="num block text-xs text-ink-600 hover:underline">
+                    {{ wholesaler.mobile }}
+                  </a>
+                {% endif %}
+              </td>
+              <td class="max-w-xs text-xs text-slate-500">{{ wholesaler.notes|truncatechars:90|dash }}</td>
+              <td class="num right">
+                {% if wholesaler.rate_count %}
+                  <a href="{% url 'rate_history' %}?wholesaler={{ wholesaler.pk }}"
+                     class="text-ink-700 hover:underline">{{ wholesaler.rate_count }}</a>
+                {% else %}
+                  <span class="text-slate-400">0</span>
+                {% endif %}
+              </td>
+              <td class="num right font-semibold">{% money wholesaler.purchase_total 0 %}</td>
+              <td class="no-print right whitespace-nowrap">
+                <a href="{% url 'wholesaler_edit' wholesaler.pk %}?next={{ request.get_full_path|urlencode }}"
+                   class="btn btn-ghost btn-sm">Edit</a>
+                <a href="{% url 'wholesaler_delete' wholesaler.pk %}?next={{ request.get_full_path|urlencode }}"
+                   class="btn btn-ghost btn-sm text-rose-700">Delete</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% elif query %}
+    {% include "manager/partials/_empty_state.html" with title="No wholesaler matches that" message="Try part of the company name, the contact person or the mobile number." action_url="/wholesalers/" action_label="Clear search" %}
+  {% else %}
+    {% include "manager/partials/_empty_state.html" with title="No wholesalers yet" message="Add the suppliers you buy from. You need at least one before you can record a rate." action_url="/wholesalers/new/" action_label="Add wholesaler" %}
+  {% endif %}
+</section>
+
+{% endblock %}

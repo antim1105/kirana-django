@@ -1,0 +1,8 @@
+{# An empty screen is an invitation to act, so it always names the next step. #}
+<div class="px-6 py-12 text-center">
+  <p class="text-base font-semibold text-ink-950">{{ title }}</p>
+  <p class="mx-auto mt-2 max-w-md text-sm text-slate-600">{{ message }}</p>
+  {% if action_url %}
+    <a href="{{ action_url }}" class="btn btn-primary mt-5">{{ action_label }}</a>
+  {% endif %}
+</div>

@@ -1,0 +1,155 @@
+{% load static kirana %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ page_title|default:"Rates" }} · {{ settings_obj.business_name }}{% endblock %}</title>
+  <meta name="description" content="Wholesale rate tracking for {{ settings_obj.business_name }}.">
+  <meta name="robots" content="noindex, nofollow">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    /* The ink / haldi palette, carried over from tailwind.config.js. */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: {
+              50: '#f4f6fa', 100: '#e6eaf4', 200: '#c9d2e6', 300: '#9aabd0',
+              400: '#647db3', 500: '#425c99', 600: '#31467b', 700: '#293a63',
+              800: '#233152', 900: '#1c2740', 950: '#111827',
+            },
+            haldi: {
+              50: '#fff9ed', 100: '#fff0d3', 200: '#ffdda6', 300: '#ffc46e',
+              400: '#ffa033', 500: '#f9830c', 600: '#dd6502', 700: '#b74a06',
+              800: '#933a0c', 900: '#78320d',
+            },
+          },
+          fontFamily: {
+            sans: ['"Inter Tight"', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+            numeric: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          boxShadow: {
+            card: '0 1px 2px rgba(17, 24, 39, 0.05), 0 8px 24px -12px rgba(17, 24, 39, 0.18)',
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="{% static 'manager/app.css' %}">
+</head>
+<body class="min-h-screen bg-slate-100 font-sans text-ink-950 antialiased">
+
+<a href="#main" class="skip-link">Skip to content</a>
+
+<div class="flex min-h-screen">
+
+  {# ---------------------------------------------------------------- Sidebar #}
+  <aside id="sidebar" class="no-print sidebar" data-open="false">
+    <div class="flex h-full flex-col">
+      <div class="border-b border-ink-800/60 px-5 py-5">
+        <p class="text-sm font-semibold text-white">{{ settings_obj.business_name }}</p>
+        <p class="mt-0.5 text-xs text-ink-300">
+          {% if settings_obj.mobile %}{{ settings_obj.mobile }}{% else %}Wholesale rates{% endif %}
+        </p>
+      </div>
+
+      <nav class="flex-1 overflow-y-auto px-3 py-4" aria-label="Main">
+        <ul class="space-y-0.5">
+          {% for item in nav_items %}
+            {% url item.url as item_url %}
+            <li>
+              <a href="{{ item_url }}"
+                 class="nav-link{% if request.path == item_url %} nav-link-active{% endif %}"
+                 {% if request.path == item_url %}aria-current="page"{% endif %}>
+                <span class="nav-glyph" aria-hidden="true">{{ item.glyph }}</span>
+                <span class="min-w-0">
+                  <span class="block truncate text-sm font-medium">{{ item.label }}</span>
+                  <span class="block truncate text-xs text-ink-300">{{ item.description }}</span>
+                </span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </nav>
+
+      <div class="border-t border-ink-800/60 px-5 py-4 text-xs text-ink-300">
+        <p>Rates are yours alone. Nothing is shared.</p>
+        {% if user.is_authenticated %}
+          <form method="post" action="{% url 'logout' %}" class="mt-2">
+            {% csrf_token %}
+            <button type="submit" class="text-ink-200 underline hover:text-white">Sign out</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </aside>
+
+  <div id="sidebar-scrim" class="no-print sidebar-scrim" hidden></div>
+
+  {# ------------------------------------------------------------------- Main #}
+  <div class="flex min-w-0 flex-1 flex-col">
+
+    <header class="no-print sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <div class="flex items-center gap-3 px-4 py-3 sm:px-6">
+        <button type="button" id="sidebar-toggle"
+                class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-ink-800 lg:hidden"
+                aria-controls="sidebar" aria-expanded="false">
+          <span aria-hidden="true">☰</span>
+          <span class="sr-only">Open menu</span>
+        </button>
+
+        <form action="{% url 'search' %}" method="get" class="min-w-0 flex-1" role="search">
+          <label for="global-search" class="sr-only">Search products, wholesalers and notes</label>
+          <input type="search" id="global-search" name="q" value="{{ query|default:'' }}"
+                 placeholder="Search products, wholesalers, notes"
+                 class="field-control max-w-md" autocomplete="off">
+        </form>
+
+        <a href="{% url 'add_rate' %}" class="btn btn-primary btn-sm shrink-0">
+          Add rate
+        </a>
+      </div>
+    </header>
+
+    {# Messages, the equivalent of the old Toast component. #}
+    {% if messages %}
+      <div class="no-print space-y-2 px-4 pt-4 sm:px-6" role="status" aria-live="polite">
+        {% for message in messages %}
+          <div class="toast toast-{{ message.tags|default:'info' }}">
+            <p class="min-w-0 flex-1">{{ message }}</p>
+            <button type="button" class="toast-close" aria-label="Dismiss">×</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <main id="main" class="flex-1 px-4 py-5 sm:px-6 sm:py-6">
+      <div class="mx-auto max-w-6xl">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    <footer class="no-print px-4 py-6 text-center text-xs text-slate-400 sm:px-6">
+      {{ settings_obj.business_name }}
+      {% if settings_obj.shop_address %}· {{ settings_obj.shop_address|linebreaksbr }}{% endif %}
+    </footer>
+  </div>
+</div>
+
+{# Suggestion lists, available to any form on the page. #}
+<datalist id="unit-options">
+  {% for unit in form.unit_options %}<option value="{{ unit }}"></option>{% endfor %}
+</datalist>
+<datalist id="category-options">
+  {% for name in form.category_options %}<option value="{{ name }}"></option>{% endfor %}
+</datalist>
+
+<script src="{% static 'manager/app.js' %}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

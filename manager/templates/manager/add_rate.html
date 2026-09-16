@@ -1,0 +1,191 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+
+<div class="mb-5">
+  {% if instance %}
+    <a href="{% url 'rate_history' %}?product={{ instance.product_id }}"
+       class="text-sm text-slate-500 hover:text-ink-900">← Back to history</a>
+  {% endif %}
+  <h1 class="mt-2 text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">{{ page_title }}</h1>
+  <p class="mt-1 max-w-2xl text-sm text-slate-600">
+    Pick the product and wholesaler, and the panel beside the form shows what
+    changed before you commit to anything.
+  </p>
+</div>
+
+{% if not has_products or not has_wholesalers %}
+  <div class="card">
+    {% if not has_products %}
+      {% include "manager/partials/_empty_state.html" with title="Add a product first" message="A rate has to belong to a product. Add what you buy, then come back here." action_url="/products/new/" action_label="Add product" %}
+    {% else %}
+      {% include "manager/partials/_empty_state.html" with title="Add a wholesaler first" message="A rate has to come from someone. Add the supplier who quoted it, then come back here." action_url="/wholesalers/new/" action_label="Add wholesaler" %}
+    {% endif %}
+  </div>
+
+{% else %}
+
+<div class="grid gap-6 lg:grid-cols-3">
+
+  {# ---------------------------------------------------------------- The form #}
+  <form method="post" id="rate-form" class="card lg:col-span-2"
+        action="{% if instance %}{% url 'rate_edit' instance.pk %}{% else %}{% url 'add_rate' %}{% endif %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <div class="card-body space-y-4">
+      {% include "manager/partials/_form_errors.html" %}
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% include "manager/partials/_field.html" with field=form.product %}
+        {% include "manager/partials/_field.html" with field=form.wholesaler %}
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% include "manager/partials/_field.html" with field=form.date %}
+        {% include "manager/partials/_field.html" with field=form.purchase_rate %}
+      </div>
+
+      {% include "manager/partials/_field.html" with field=form.quantity %}
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        {% include "manager/partials/_field.html" with field=form.transport_cost %}
+        {% include "manager/partials/_field.html" with field=form.other_cost %}
+      </div>
+
+      <div class="rounded-lg bg-slate-50 px-4 py-3 text-xs text-slate-600">
+        Transport and other charges are spread over the quantity, so the
+        effective rate is what the goods really cost you per unit:
+        <span class="num mt-1 block text-ink-900">
+          effective rate = rate + (transport + other) ÷ quantity
+        </span>
+      </div>
+
+      {% include "manager/partials/_field.html" with field=form.notes %}
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-5 py-4">
+      <p class="text-xs text-slate-500">Nothing is saved until you confirm on the next screen.</p>
+      <div class="flex gap-2">
+        {% if instance %}
+          <a href="{% url 'rate_history' %}?product={{ instance.product_id }}" class="btn btn-secondary">Cancel</a>
+        {% endif %}
+        <button type="submit" name="action" value="review" class="btn btn-primary">Review and save</button>
+      </div>
+    </div>
+  </form>
+
+  {# ------------------------------------------------------------- The preview #}
+  <aside class="card h-fit" id="rate-preview"
+         data-endpoint="{% url 'rate_preview_api' %}"
+         data-exclude="{% if instance %}{{ instance.pk }}{% endif %}"
+         {% if not preview %}hidden{% endif %}>
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">What this changes</h2>
+        <p class="card-description">Updates as you type.</p>
+      </div>
+    </div>
+    <div class="card-body space-y-4">
+
+      <div>
+        <p class="text-xs font-medium text-slate-500">Previous rate</p>
+        <p class="num mt-0.5 text-lg font-semibold text-ink-950" data-slot="previous">
+          {% if preview.previous %}
+            {% money preview.previous.purchase_rate %} per <span data-slot="unit">{{ preview.previous.unit }}</span>
+          {% else %}
+            No earlier rate recorded
+          {% endif %}
+        </p>
+        <p class="text-xs text-slate-500" data-slot="previous-source">{{ preview.previous_source }}</p>
+      </div>
+
+      <div class="border-t border-slate-200 pt-3">
+        <p class="text-xs font-medium text-slate-500">Movement</p>
+        {% if preview.previous and preview.difference != 0 %}
+          <p class="num text-sm font-semibold {{ preview.trend|trend_class:'text' }}" data-slot="movement">
+            {{ preview.trend|trend_arrow }} {% signed_money preview.difference %}
+            ({{ preview.percentage_change|percent }})
+          </p>
+        {% else %}
+          <p class="text-sm text-slate-500" data-slot="movement">
+            {% if preview.previous %}No change{% else %}—{% endif %}
+          </p>
+        {% endif %}
+      </div>
+
+      <div class="border-t border-slate-200 pt-3">
+        <p class="text-xs font-medium text-slate-500">Effective rate</p>
+        <p class="num mt-0.5 text-sm font-semibold text-ink-950" data-slot="effective">
+          {% if preview %}
+            {% money preview.effective_rate %} per <span data-slot="unit">{{ preview.product.unit }}</span>
+          {% else %}—{% endif %}
+        </p>
+        <p class="text-xs text-slate-500">Rate plus transport and other charges, per unit.</p>
+      </div>
+
+      <div class="border-t border-slate-200 pt-3">
+        <p class="text-xs text-emerald-800" data-slot="cheapest">
+          {% if preview.cheapest %}
+            Lowest recorded: {% money preview.cheapest.rate.purchase_rate %}
+            from {{ preview.cheapest.wholesaler.company_name }}
+          {% endif %}
+        </p>
+      </div>
+
+      {% if preview.product %}
+        <a href="{% url 'rate_history' %}?product={{ preview.product.pk }}"
+           class="block text-xs font-medium text-ink-700 underline">
+          See all {{ preview.product.name }} rates
+        </a>
+      {% endif %}
+    </div>
+  </aside>
+</div>
+
+{% if recent and not instance %}
+  <section class="card mt-6">
+    <div class="card-header">
+      <div>
+        <h2 class="card-title">Just recorded</h2>
+        <p class="card-description">The last five rates you added.</p>
+      </div>
+      <a href="{% url 'rate_history' %}" class="btn btn-secondary btn-sm no-print">All history</a>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Product</th>
+            <th scope="col">Wholesaler</th>
+            <th scope="col" class="right">Rate</th>
+            <th scope="col" class="no-print right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rate in recent %}
+            <tr>
+              <td class="num whitespace-nowrap text-slate-600">{% shop_date rate.date %}</td>
+              <td class="font-medium text-ink-950">{{ rate.product.name }}</td>
+              <td class="text-slate-700">{{ rate.wholesaler.company_name }}</td>
+              <td class="num right font-semibold">
+                {% money rate.purchase_rate %}
+                <span class="block text-xs font-normal text-slate-400">per {{ rate.unit }}</span>
+              </td>
+              <td class="no-print right whitespace-nowrap">
+                <a href="{% url 'rate_edit' rate.pk %}" class="btn btn-ghost btn-sm">Edit</a>
+                <a href="{% url 'rate_delete' rate.pk %}?next={{ request.get_full_path|urlencode }}"
+                   class="btn btn-ghost btn-sm text-rose-700">Delete</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endif %}
+
+{% endif %}
+{% endblock %}

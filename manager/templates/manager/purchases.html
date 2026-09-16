@@ -1,0 +1,113 @@
+{% extends "manager/base.html" %}
+{% load kirana %}
+
+{% block content %}
+
+<div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+  <div class="min-w-0">
+    <h1 class="text-xl font-semibold tracking-tight text-ink-950 sm:text-2xl">Purchases</h1>
+    <p class="mt-1 max-w-2xl text-sm text-slate-600">
+      What you actually bought, as opposed to what was quoted. Totals are worked out for you.
+    </p>
+  </div>
+  <div class="no-print flex flex-wrap gap-2">
+    {% if can_add %}
+      <a href="{% url 'purchase_create' %}" class="btn btn-primary">Record a purchase</a>
+    {% endif %}
+    {% if total_count %}
+      <a href="{% url 'export' 'purchases' 'csv' %}" class="btn btn-secondary">Export CSV</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if not can_add and not total_count %}
+  <div class="card">
+    {% include "manager/partials/_empty_state.html" with title="Add a product and a wholesaler first" message="A purchase needs something bought and someone to buy it from." action_url="/products/new/" action_label="Add product" %}
+  </div>
+
+{% else %}
+
+  <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+    <div class="card p-4">
+      <p class="text-xs font-medium text-slate-500">Purchases</p>
+      <p class="stat-value mt-1 text-ink-950">{{ totals.count }}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs font-medium text-slate-500">Goods value</p>
+      <p class="stat-value mt-1 text-ink-950">{% money totals.goods 0 %}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs font-medium text-slate-500">Transport and other</p>
+      <p class="stat-value mt-1 text-slate-600">{% money extras 0 %}</p>
+    </div>
+    <div class="card border-haldi-200 bg-haldi-50 p-4">
+      <p class="text-xs font-medium text-haldi-800">Total paid</p>
+      <p class="stat-value mt-1 text-haldi-900">{% money totals.amount 0 %}</p>
+    </div>
+  </div>
+
+  <section class="card mt-6">
+    <div class="card-header">
+      <h2 class="card-title">
+        {{ totals.count|plural:"record" }}{% if is_filtered %} of {{ total_count }}{% endif %}
+      </h2>
+      <form method="get" data-autosubmit class="no-print grid w-full gap-2 sm:w-auto sm:grid-cols-4">
+        {{ filter_form.product }}
+        {{ filter_form.wholesaler }}
+        {{ filter_form.date_from }}
+        {{ filter_form.date_to }}
+        <noscript><button type="submit" class="btn btn-secondary btn-sm">Filter</button></noscript>
+      </form>
+    </div>
+
+    {% if purchases %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Product</th>
+              <th scope="col">Wholesaler</th>
+              <th scope="col" class="right">Quantity</th>
+              <th scope="col" class="right">Rate</th>
+              <th scope="col" class="right">Goods</th>
+              <th scope="col" class="right">Extras</th>
+              <th scope="col" class="right">Paid</th>
+              <th scope="col" class="no-print right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for purchase in purchases %}
+              <tr>
+                <td class="num whitespace-nowrap text-slate-700">{% shop_date purchase.date %}</td>
+                <td class="font-medium text-ink-950">{{ purchase.product.name }}</td>
+                <td class="text-slate-700">{{ purchase.wholesaler.company_name }}</td>
+                <td class="num right">{{ purchase.quantity|quantity:purchase.product.unit }}</td>
+                <td class="num right">{% money purchase.rate %}</td>
+                <td class="num right text-slate-600">{% money purchase.total_amount %}</td>
+                <td class="num right text-slate-500">
+                  {% if purchase.transport_cost or purchase.other_cost %}
+                    {% money purchase.transport_cost|add:purchase.other_cost %}
+                  {% else %}—{% endif %}
+                </td>
+                <td class="num right font-semibold">{% money purchase.final_amount %}</td>
+                <td class="no-print right whitespace-nowrap">
+                  <a href="{% url 'purchase_edit' purchase.pk %}?next={{ request.get_full_path|urlencode }}"
+                     class="btn btn-ghost btn-sm">Edit</a>
+                  <a href="{% url 'purchase_delete' purchase.pk %}?next={{ request.get_full_path|urlencode }}"
+                     class="btn btn-ghost btn-sm text-rose-700">Delete</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% elif is_filtered %}
+      {% include "manager/partials/_empty_state.html" with title="No purchases match those filters" message="Widen the dates, or clear the product and wholesaler." action_url="/purchases/" action_label="Clear filters" %}
+    {% else %}
+      {% include "manager/partials/_empty_state.html" with title="No purchases recorded" message="Record a purchase to track what you actually spent, not just what was quoted." action_url="/purchases/new/" action_label="Record a purchase" %}
+    {% endif %}
+  </section>
+
+{% endif %}
+{% endblock %}
